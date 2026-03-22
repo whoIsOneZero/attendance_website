@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attendance - Spirit Surge</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div id="date-time"></div>
+
+      <div class="form-container">
+        <div class="header">
+          <img
+            src="{{ url_for('static', filename='spirit_surge_logo.png') }}"
+            alt="Spirit Surge Logo"
+            class="logo"
+          />
+          <div class="header-text">
+            <p class="user-info">
+              <strong>{{ current_user.role | capitalize }} Mode</strong><br />
+              <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+            </p>
+          </div>
+        </div>
+
+        <form id="attendanceForm">
+          <label for="memberSearch">Member</label>
+          <div class="search-container">
+            <input
+              list="membersList"
+              id="memberSearch"
+              placeholder="Name or Phone number"
+              required
+              autocomplete="off"
+            />
+            <datalist id="membersList"></datalist>
+          </div>
+
+          <input type="hidden" id="selected_member_id" />
+
+          <div class="action-row">
+            <button type="button" id="openRegisterBtn" class="mini-btn success">
+              ＋ New Member
+            </button>
+            <button
+              type="button"
+              id="openUpdateBtn"
+              class="mini-btn info"
+              style="display: none"
+            >
+              Edit Profile
+            </button>
+          </div>
+
+          <label for="type">Service Type</label>
+          <select id="type" required>
+            <option value="Sunday Service">Sunday Service</option>
+            <option value="Youth Meeting">Youth Meeting</option>
+            <option value="Prayer Meeting">Prayer Meeting</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <label for="notes">Notes (Optional)</label>
+          <textarea id="notes" placeholder="Anything to note?"></textarea>
+
+          <button type="submit" id="submitBtn">Check In</button>
+        </form>
+
+        <div id="memberModal" class="modal-overlay" style="display: none">
+          <div class="modal-card">
+            <div class="modal-header">
+              <h3 id="modalTitle" style="margin: 0; font-size: 1.1rem">
+                Register New Member
+              </h3>
+              <button type="button" id="closeModal" class="close-modal">
+                &times;
+              </button>
+            </div>
+
+            <div class="modal-body">
+              <div class="input-group">
+                <label>Full Name</label>
+                <input type="text" id="modal_name" placeholder="Full Name" />
+              </div>
+              <div class="input-group">
+                <label>Phone Number</label>
+                <input
+                  type="text"
+                  id="modal_phone"
+                  placeholder="Phone Number"
+                />
+              </div>
+              <div class="input-group">
+                <label>SCD Group</label>
+                <select id="modal_scd">
+                  <option value="">-- Select Group --</option>
+                  <option value="Surge Seekers">Surge Seekers</option>
+                  <option value="Fire Line">Fire Line</option>
+                  <option value="Ignite Circle">Ignite Circle</option>
+                  <option value="Not Assigned">Not Assigned</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Membership Type</label>
+                <select id="modal_membership_type" required>
+                  <option value="Member">Member</option>
+                  <option value="Regular Visitor">Regular Visitor</option>
+                  <option value="First Timer">First Timer</option>
+                </select>
+              </div>
+              <button type="button" id="saveMemberBtn" class="secondary-btn">
+                Save Member Details
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="loader" class="loader-overlay" style="display: none">
+          <div class="spinner"></div>
+        </div>
+
+        <div id="popup" class="popup">
+          <div class="popup-content" id="popup-content"></div>
+        </div>
+      </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+  </body>
+</html>

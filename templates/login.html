@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staff Login - Spirit Surge</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div class="form-container">
+        <div class="header">
+          <img
+            src="{{ url_for('static', filename='spirit_surge_logo.png') }}"
+            alt="Logo"
+            class="logo"
+          />
+          <div class="header-text">
+            <h2>Staff Login</h2>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('login') }}">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            name="email"
+            id="email"
+            placeholder="Enter your email"
+            required
+          />
+
+          <label for="password">Password</label>
+          <div class="password-wrapper" style="position: relative">
+            <input
+              type="password"
+              name="password"
+              id="password"
+              placeholder="Enter password"
+              required
+              style="padding-right: 45px"
+            />
+            <button
+              type="button"
+              id="togglePassword"
+              style="
+                position: absolute;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: none;
+                border: none;
+                width: auto;
+                padding: 5px;
+                margin: 0;
+                color: var(--text-muted);
+                font-size: 12px;
+                cursor: pointer;
+              "
+            >
+              SHOW
+            </button>
+          </div>
+
+          <button type="submit" id="submitBtn" style="margin-top: 24px">
+            Login
+          </button>
+        </form>
+
+        {% with messages = get_flashed_messages() %} {% if messages %}
+        <div
+          style="
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+            padding: 12px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+          "
+        >
+          {{ messages[0] }}
+        </div>
+        {% endif %} {% endwith %}
+
+        <div id="loader" class="loader-overlay" style="display: none">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+  </body>
+</html>
