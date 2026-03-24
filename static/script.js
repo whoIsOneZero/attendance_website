@@ -119,18 +119,54 @@ if (form) {
   });
 
   // 2. Search & Edit Visibility
-  memberInput.addEventListener("input", (e) => {
-    const val = e.target.value.trim();
-    const match = allMembers.find(
-      (m) => `${m.full_name} (${m.phone_number})` === val,
-    );
+  const suggestionsContainer = document.getElementById("customSuggestions");
 
-    if (match) {
-      hiddenIdInput.value = match.id;
-      openUpdateBtn.style.display = "inline-block";
+  memberInput.addEventListener("input", (e) => {
+    if (!suggestionsContainer) return;
+    const val = e.target.value.toLowerCase().trim();
+    suggestionsContainer.innerHTML = "";
+
+    if (val.length < 2) {
+      suggestionsContainer.style.display = "none";
+      return;
+    }
+
+    // Filter members based on name or phone
+    const matches = allMembers
+      .filter(
+        (m) =>
+          m.full_name.toLowerCase().includes(val) ||
+          m.phone_number.includes(val),
+      )
+      .slice(0, 8); // Limit to top 8 results for mobile speed
+
+    if (matches.length > 0) {
+      matches.forEach((match) => {
+        const div = document.createElement("div");
+        div.className = "suggestion-item";
+        div.textContent = `${match.full_name} (${match.phone_number})`;
+
+        div.onclick = () => {
+          memberInput.value = `${match.full_name} (${match.phone_number})`;
+          hiddenIdInput.value = match.id;
+          openUpdateBtn.style.display = "inline-block";
+          suggestionsContainer.style.display = "none";
+        };
+
+        suggestionsContainer.appendChild(div);
+      });
+      suggestionsContainer.style.display = "block";
     } else {
+      suggestionsContainer.style.display = "none";
       hiddenIdInput.value = "";
       openUpdateBtn.style.display = "none";
+    }
+  });
+
+  // Close dropdown if user clicks outside
+  document.addEventListener("click", (e) => {
+    if (e.target !== memberInput) {
+      suggestionsContainer.style.display = "none";
     }
   });
 
@@ -223,6 +259,7 @@ if (form) {
 }
 
 // 6. Fetch Members from Database
+// 6. Fetch Members from Database
 async function loadMembers() {
   try {
     const response = await fetch("/get-members");
@@ -230,20 +267,22 @@ async function loadMembers() {
     const data = await response.json();
     allMembers = data;
 
-    const membersList = document.getElementById("membersList");
-    membersList.innerHTML = "";
-
-    allMembers.forEach((member) => {
-      const option = document.createElement("option");
-      option.value = `${member.full_name} (${member.phone_number})`;
-      membersList.appendChild(option);
-    });
+    // Check if membersList exists before trying to modify it
+    const membersListElement = document.getElementById("membersList");
+    if (membersListElement) {
+      membersListElement.innerHTML = "";
+      allMembers.forEach((member) => {
+        const option = document.createElement("option");
+        option.value = `${member.full_name} (${member.phone_number})`;
+        membersListElement.appendChild(option);
+      });
+    }
   } catch (error) {
     console.error("Error loading members:", error);
   }
 }
 
-// Initial load
+// Initial load - ONLY if the attendance form exists
 if (form) {
   loadMembers();
 }

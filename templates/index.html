@@ -33,16 +33,18 @@
         </div>
 
         <form id="attendanceForm">
-          <label for="memberSearch">Member</label>
-          <div class="search-container">
-            <input
-              list="membersList"
-              id="memberSearch"
-              placeholder="Name or Phone number"
-              required
-              autocomplete="off"
-            />
-            <datalist id="membersList"></datalist>
+          <div class="search-wrapper" style="position: relative">
+            <label for="memberSearch">Member</label>
+            <div class="search-container">
+              <input
+                type="text"
+                id="memberSearch"
+                placeholder="Name or Phone number"
+                required
+                autocomplete="off"
+              />
+            </div>
+            <div id="customSuggestions" class="custom-dropdown"></div>
           </div>
 
           <input type="hidden" id="selected_member_id" />
