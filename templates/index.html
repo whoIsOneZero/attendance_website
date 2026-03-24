@@ -35,14 +35,23 @@
         <form id="attendanceForm">
           <div class="search-wrapper" style="position: relative">
             <label for="memberSearch">Member</label>
-            <div class="search-container">
+            <div class="search-input-container" style="position: relative">
               <input
                 type="text"
                 id="memberSearch"
                 placeholder="Name or Phone number"
                 required
                 autocomplete="off"
+                style="padding-right: 40px"
               />
+              <button
+                type="button"
+                id="clearSearch"
+                class="clear-btn"
+                style="display: none"
+              >
+                &times;
+              </button>
             </div>
             <div id="customSuggestions" class="custom-dropdown"></div>
           </div>

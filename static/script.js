@@ -68,6 +68,42 @@ function showPopup(message, type = "success") {
   }, 4000);
 }
 
+function updateDateTime() {
+  const dateTimeDisplay = document.getElementById("date-time");
+  if (!dateTimeDisplay) return;
+
+  const now = new Date();
+
+  // Extract UTC components
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  const dayName = days[now.getUTCDay()];
+  const monthName = months[now.getUTCMonth()];
+  const date = now.getUTCDate();
+  const hours = String(now.getUTCHours()).padStart(2, "0");
+  const minutes = String(now.getUTCMinutes()).padStart(2, "0");
+
+  // Format: "Wed, Mar 25 - 15:09 GMT"
+  dateTimeDisplay.textContent = `${dayName}, ${monthName} ${date} - ${hours}:${minutes} GMT`;
+}
+
+setInterval(updateDateTime, 1000);
+updateDateTime();
+
 if (form) {
   // 1. Attendance Submission (Clock In)
   form.addEventListener("submit", async (e) => {
@@ -120,10 +156,15 @@ if (form) {
 
   // 2. Search & Edit Visibility
   const suggestionsContainer = document.getElementById("customSuggestions");
+  const clearSearchBtn = document.getElementById("clearSearch");
 
   memberInput.addEventListener("input", (e) => {
     if (!suggestionsContainer) return;
     const val = e.target.value.toLowerCase().trim();
+
+    // Show/Hide the Clear button
+    clearSearchBtn.style.display = val.length > 0 ? "flex" : "none";
+
     suggestionsContainer.innerHTML = "";
 
     if (val.length < 2) {
@@ -161,6 +202,15 @@ if (form) {
       hiddenIdInput.value = "";
       openUpdateBtn.style.display = "none";
     }
+
+    clearSearchBtn.addEventListener("click", () => {
+      memberInput.value = "";
+      hiddenIdInput.value = "";
+      clearSearchBtn.style.display = "none";
+      suggestionsContainer.style.display = "none";
+      openUpdateBtn.style.display = "none";
+      memberInput.focus(); // Keep focus for the next search
+    });
   });
 
   // Close dropdown if user clicks outside
