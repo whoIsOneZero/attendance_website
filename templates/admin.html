@@ -53,6 +53,8 @@
           <div class="stat-card">
             <span class="stat-label" id="statsLabel">Attendance for Today</span>
             <h2 id="totalToday">...</h2>
+
+            <div id="breakdownContainer" class="breakdown-list"></div>
           </div>
         </div>
       </div>
@@ -62,10 +64,12 @@
       const datePicker = document.getElementById("exportDate");
       const statsLabel = document.getElementById("statsLabel");
       const totalDisplay = document.getElementById("totalToday");
+      const breakdownContainer = document.getElementById("breakdownContainer");
 
       // Function to fetch stats for a specific date
       async function updateDashboard(selectedDate) {
-        totalDisplay.textContent = "..."; // Loading state
+        totalDisplay.textContent = "...";
+        breakdownContainer.innerHTML = ""; // Clear old stats
 
         try {
           const response = await fetch(
@@ -73,9 +77,24 @@
           );
           const data = await response.json();
 
-          totalDisplay.textContent = data.count;
+          totalDisplay.textContent = data.total;
 
-          // Update label to reflect if it's "Today" or a specific date
+          // Populate Breakdown
+          if (data.breakdown.length > 0) {
+            data.breakdown.forEach((item) => {
+              const row = document.createElement("div");
+              row.className = "breakdown-row";
+              row.innerHTML = `
+                    <span>${item.type}</span>
+                    <span class="breakdown-count">${item.count}</span>
+                `;
+              breakdownContainer.appendChild(row);
+            });
+          } else {
+            breakdownContainer.innerHTML =
+              "<p style='font-size:0.8rem; opacity:0.5;'>No records found.</p>";
+          }
+
           const today = new Date().toISOString().split("T")[0];
           statsLabel.textContent =
             selectedDate === today
@@ -83,11 +102,8 @@
               : `Attendance for ${selectedDate}`;
         } catch (err) {
           totalDisplay.textContent = "Error";
-          console.error(err);
         }
-      }
-
-      // Event: Change Date
+      } // Event: Change Date
       datePicker.addEventListener("change", (e) => {
         updateDashboard(e.target.value);
       });

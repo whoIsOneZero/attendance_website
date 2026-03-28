@@ -75,13 +75,13 @@ def login():
 
 
 @app.route('/')
-@admin_required
+@login_required
 def index():
     return render_template('index.html')
 
 
 @app.route('/get-members', methods=['GET'])
-@admin_required
+@login_required
 def get_members():
     try:
         # Added scd_group and membership_type so the frontend has them for editing
@@ -94,7 +94,8 @@ def get_members():
 
 
 @app.route('/create-member', methods=['POST'])
-@admin_required
+# @admin_required
+@login_required
 def create_member():
     data = request.json
     try:
@@ -116,7 +117,8 @@ def create_member():
 
 
 @app.route('/update-member', methods=['POST'])
-@admin_required
+# @admin_required
+@login_required
 def update_member():
     data = request.json
     member_id = data.get("id")
@@ -137,7 +139,7 @@ def update_member():
 
 
 @app.route('/submit', methods=['POST'])
-@admin_required
+@login_required
 def submit_attendance():
     data = request.json
     try:
@@ -158,14 +160,6 @@ def submit_attendance():
 def logout():
     logout_user()
     return redirect(url_for('login'))
-
-
-@app.route('/admin-dashboard')
-@admin_required
-def admin_only():
-    if current_user.role != 'admin':
-        return "Access Denied: Admins Only", 403
-    return render_template('admin.html')
 
 
 @app.route('/admin')
@@ -192,7 +186,6 @@ def admin_stats():
         .eq("check_in_date", today_gmt).execute()
 
     # Query 2: Breakdown by Service Type (All time or Last 30 days)
-    # We'll fetch the count grouped by 'type'
     breakdown_res = supabase.rpc("get_attendance_breakdown").execute()
 
     return jsonify({
@@ -206,14 +199,30 @@ def admin_stats():
 def stats_by_date():
     target_date = request.args.get('date')
     if not target_date:
-        return jsonify({"count": 0}), 400
+        return jsonify({"total": 0, "breakdown": []}), 400
 
-    # Query Supabase for the specific GMT date
-    res = supabase.table("attendance") \
+    # 1. Get Total Count
+    total_res = supabase.table("attendance") \
         .select("id", count="exact") \
         .eq("check_in_date", target_date).execute()
 
-    return jsonify({"count": res.count})
+    # 2. Get Grouped Breakdown (Using the correct column name: attendance_type)
+    breakdown_res = supabase.table("attendance") \
+        .select("attendance_type") \
+        .eq("check_in_date", target_date).execute()
+
+    counts = {}
+    for item in breakdown_res.data:
+        # Match the key to your database column name
+        t = item['attendance_type']
+        counts[t] = counts.get(t, 0) + 1
+
+    breakdown_list = [{"type": k, "count": v} for k, v in counts.items()]
+
+    return jsonify({
+        "total": total_res.count,
+        "breakdown": breakdown_list
+    })
 
 
 @app.route('/export-attendance')
@@ -229,7 +238,7 @@ def export_attendance():
     # Fetch data from Supabase with a Join to get Member Names
     # Note: Ensure your 'attendance' table has a foreign key to 'members'
     res = supabase.table("attendance") \
-        .select("created_at, type, notes, members(full_name, phone_number, scd_group)") \
+        .select("created_at, attendance_type, notes, members(full_name, phone_number, scd_group)") \
         .eq("check_in_date", target_date).execute()
 
     if not res.data:
@@ -238,13 +247,16 @@ def export_attendance():
     # Flatten the nested Supabase JSON for Excel
     flattened_data = []
     for row in res.data:
+        # We use .get() to avoid crashing if 'members' is missing for some reason
+        member_info = row.get('members') or {}
+
         flattened_data.append({
-            "Time (GMT)": row['created_at'],
-            "Full Name": row['members']['full_name'],
-            "Phone": row['members']['phone_number'],
-            "Group": row['members']['scd_group'],
-            "Service": row['type'],
-            "Notes": row['notes']
+            "Time (GMT)": row.get('created_at'),
+            "Full Name": member_info.get('full_name', 'Unknown'),
+            "Phone": member_info.get('phone_number', 'N/A'),
+            "Group": member_info.get('scd_group', 'N/A'),
+            "Service": row.get('attendance_type'),
+            "Notes": row.get('notes')
         })
 
     # Create Excel in Memory
@@ -256,7 +268,7 @@ def export_attendance():
 
     return send_file(
         output,
-        attachment_filename=f"Attendance_{target_date}.xlsx",
+        download_name=f"Attendance_{target_date}.xlsx",
         as_attachment=True
     )
 
