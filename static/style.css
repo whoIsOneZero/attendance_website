@@ -500,3 +500,19 @@ form textarea:focus {
   font-weight: 700;
   text-transform: uppercase;
 }
+
+.admin-input {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: white;
+  font-family: inherit;
+  flex: 2; /* Takes more space than the button */
+}
+
+/* Customizing the calendar icon in some browsers */
+::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Makes the icon white */
+  cursor: pointer;
+}

@@ -40,7 +40,7 @@
         </div>
 
         <div class="admin-section">
-          <label>Export Daily Report (GMT)</label>
+          <label for="exportDate">Select Date (GMT)</label>
           <div class="action-row">
             <input type="date" id="exportDate" class="admin-input" />
             <button id="downloadBtn" class="mini-btn success">
@@ -51,28 +51,58 @@
 
         <div class="stats-grid" style="margin-top: 2rem">
           <div class="stat-card">
-            <span class="stat-label">Total Attendance Today</span>
-            <h2 id="totalToday">--</h2>
+            <span class="stat-label" id="statsLabel">Attendance for Today</span>
+            <h2 id="totalToday">...</h2>
           </div>
         </div>
       </div>
     </div>
 
     <script>
-      // Export Logic
-      document.getElementById("downloadBtn").addEventListener("click", () => {
-        const date = document.getElementById("exportDate").value;
-        if (!date) {
-          alert("Please select a date");
-          return;
+      const datePicker = document.getElementById("exportDate");
+      const statsLabel = document.getElementById("statsLabel");
+      const totalDisplay = document.getElementById("totalToday");
+
+      // Function to fetch stats for a specific date
+      async function updateDashboard(selectedDate) {
+        totalDisplay.textContent = "..."; // Loading state
+
+        try {
+          const response = await fetch(
+            `/api/stats-by-date?date=${selectedDate}`,
+          );
+          const data = await response.json();
+
+          totalDisplay.textContent = data.count;
+
+          // Update label to reflect if it's "Today" or a specific date
+          const today = new Date().toISOString().split("T")[0];
+          statsLabel.textContent =
+            selectedDate === today
+              ? "Attendance for Today"
+              : `Attendance for ${selectedDate}`;
+        } catch (err) {
+          totalDisplay.textContent = "Error";
+          console.error(err);
         }
+      }
+
+      // Event: Change Date
+      datePicker.addEventListener("change", (e) => {
+        updateDashboard(e.target.value);
+      });
+
+      // Event: Download Excel (Uses the currently selected date)
+      document.getElementById("downloadBtn").addEventListener("click", () => {
+        const date = datePicker.value;
+        if (!date) return alert("Please select a date");
         window.location.href = `/export-attendance?date=${date}`;
       });
 
-      // Set default date to today for the export picker
-      document.getElementById("exportDate").value = new Date()
-        .toISOString()
-        .split("T")[0];
+      // Init: Set today's date and load initial stats
+      const todayStr = new Date().toISOString().split("T")[0];
+      datePicker.value = todayStr;
+      updateDashboard(todayStr);
     </script>
   </body>
 </html>

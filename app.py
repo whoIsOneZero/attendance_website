@@ -167,12 +167,14 @@ def admin_only():
         return "Access Denied: Admins Only", 403
     return render_template('admin.html')
 
+
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
     if current_user.role != 'admin':
         return "Unauthorized", 403
     return render_template('admin.html')
+
 
 @app.route('/admin-stats')
 @admin_required
@@ -197,6 +199,21 @@ def admin_stats():
         "today_count": today_res.count,
         "breakdown": breakdown_res.data
     })
+
+
+@app.route('/api/stats-by-date')
+@admin_required
+def stats_by_date():
+    target_date = request.args.get('date')
+    if not target_date:
+        return jsonify({"count": 0}), 400
+
+    # Query Supabase for the specific GMT date
+    res = supabase.table("attendance") \
+        .select("id", count="exact") \
+        .eq("check_in_date", target_date).execute()
+
+    return jsonify({"count": res.count})
 
 
 @app.route('/export-attendance')
