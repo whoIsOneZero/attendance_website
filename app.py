@@ -1,11 +1,18 @@
 import os
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from datetime import datetime, date
+from functools import wraps
+from io import BytesIO
+
+from flask import Flask, render_template, request, jsonify, redirect, send_file, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from supabase import create_client, Client
+import pandas as pd
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
@@ -36,6 +43,15 @@ def load_user(user_id):
         return User(u['id'], u['email'], u['role'])
     return None
 
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'admin':
+            flash("Admin access required.", "error")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 # --- ROUTES ---
 
 
@@ -59,13 +75,13 @@ def login():
 
 
 @app.route('/')
-@login_required
+@admin_required
 def index():
     return render_template('index.html')
 
 
 @app.route('/get-members', methods=['GET'])
-@login_required
+@admin_required
 def get_members():
     try:
         # Added scd_group and membership_type so the frontend has them for editing
@@ -78,7 +94,7 @@ def get_members():
 
 
 @app.route('/create-member', methods=['POST'])
-@login_required
+@admin_required
 def create_member():
     data = request.json
     try:
@@ -100,7 +116,7 @@ def create_member():
 
 
 @app.route('/update-member', methods=['POST'])
-@login_required
+@admin_required
 def update_member():
     data = request.json
     member_id = data.get("id")
@@ -121,7 +137,7 @@ def update_member():
 
 
 @app.route('/submit', methods=['POST'])
-@login_required
+@admin_required
 def submit_attendance():
     data = request.json
     try:
@@ -145,11 +161,87 @@ def logout():
 
 
 @app.route('/admin-dashboard')
-@login_required
+@admin_required
 def admin_only():
     if current_user.role != 'admin':
         return "Access Denied: Admins Only", 403
     return render_template('admin.html')
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    if current_user.role != 'admin':
+        return "Unauthorized", 403
+    return render_template('admin.html')
+
+@app.route('/admin-stats')
+@admin_required
+def admin_stats():
+    # Only allow admins to see this
+    if current_user.role != 'admin':
+        return jsonify({"message": "Unauthorized"}), 403
+
+    # Get today's date in GMT/UTC
+    today_gmt = datetime.utcnow().date().isoformat()
+
+    # Query 1: Total Attendance Today
+    today_res = supabase.table("attendance") \
+        .select("id", count="exact") \
+        .eq("check_in_date", today_gmt).execute()
+
+    # Query 2: Breakdown by Service Type (All time or Last 30 days)
+    # We'll fetch the count grouped by 'type'
+    breakdown_res = supabase.rpc("get_attendance_breakdown").execute()
+
+    return jsonify({
+        "today_count": today_res.count,
+        "breakdown": breakdown_res.data
+    })
+
+
+@app.route('/export-attendance')
+@admin_required
+def export_attendance():
+    if current_user.role != 'admin':
+        return "Unauthorized", 403
+
+    # Get the date from the query string (e.g., /export-attendance?date=2026-03-28)
+    target_date = request.args.get(
+        'date', datetime.utcnow().date().isoformat())
+
+    # Fetch data from Supabase with a Join to get Member Names
+    # Note: Ensure your 'attendance' table has a foreign key to 'members'
+    res = supabase.table("attendance") \
+        .select("created_at, type, notes, members(full_name, phone_number, scd_group)") \
+        .eq("check_in_date", target_date).execute()
+
+    if not res.data:
+        return "No data for this date", 404
+
+    # Flatten the nested Supabase JSON for Excel
+    flattened_data = []
+    for row in res.data:
+        flattened_data.append({
+            "Time (GMT)": row['created_at'],
+            "Full Name": row['members']['full_name'],
+            "Phone": row['members']['phone_number'],
+            "Group": row['members']['scd_group'],
+            "Service": row['type'],
+            "Notes": row['notes']
+        })
+
+    # Create Excel in Memory
+    df = pd.DataFrame(flattened_data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Attendance')
+    output.seek(0)
+
+    return send_file(
+        output,
+        attachment_filename=f"Attendance_{target_date}.xlsx",
+        as_attachment=True
+    )
 
 
 if __name__ == '__main__':

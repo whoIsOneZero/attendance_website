@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Admin - Spirit Surge</title>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="{{ url_for('static', filename='favicon.ico') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div id="date-time"></div>
+
+      <div class="form-container" style="max-width: 600px">
+        <div class="header">
+          <img
+            src="{{ url_for('static', filename='spirit_surge_logo.png') }}"
+            class="logo"
+          />
+          <div class="header-text">
+            <h2 style="margin: 0">Admin Portal</h2>
+            <a
+              href="{{ url_for('index') }}"
+              style="color: var(--text-muted); font-size: 0.8rem"
+              >Back to Attendance</a
+            >
+          </div>
+        </div>
+
+        <div class="admin-section">
+          <label>Export Daily Report (GMT)</label>
+          <div class="action-row">
+            <input type="date" id="exportDate" class="admin-input" />
+            <button id="downloadBtn" class="mini-btn success">
+              Download Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid" style="margin-top: 2rem">
+          <div class="stat-card">
+            <span class="stat-label">Total Attendance Today</span>
+            <h2 id="totalToday">--</h2>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Export Logic
+      document.getElementById("downloadBtn").addEventListener("click", () => {
+        const date = document.getElementById("exportDate").value;
+        if (!date) {
+          alert("Please select a date");
+          return;
+        }
+        window.location.href = `/export-attendance?date=${date}`;
+      });
+
+      // Set default date to today for the export picker
+      document.getElementById("exportDate").value = new Date()
+        .toISOString()
+        .split("T")[0];
+    </script>
+  </body>
+</html>

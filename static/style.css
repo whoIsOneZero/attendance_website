@@ -465,3 +465,38 @@ form textarea:focus {
   text-transform: uppercase;
   opacity: 0.8;
 }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid var(--accent-green);
+  padding: 1.5rem;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stat-card h2 {
+  font-size: 2.5rem;
+  margin: 10px 0 0;
+  color: var(--accent-green);
+}
+
+.admin-link {
+  color: var(--accent-green);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
