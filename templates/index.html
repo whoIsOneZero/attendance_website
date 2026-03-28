@@ -32,6 +32,11 @@
           <div class="header-text">
             <p class="user-info">
               <strong>{{ current_user.role | capitalize }} Mode</strong><br />
+              {% if current_user.role == 'admin' %}
+              <a href="{{ url_for('admin_dashboard') }}" class="admin-link"
+                >Admin Dashboard</a
+              >
+              | {% endif %}
               <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
             </p>
           </div>

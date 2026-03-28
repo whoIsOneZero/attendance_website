@@ -1,11 +1,18 @@
 import os
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from datetime import datetime, date
+from functools import wraps
+from io import BytesIO
+
+from flask import Flask, render_template, request, jsonify, redirect, send_file, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from supabase import create_client, Client
+import pandas as pd
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
@@ -36,6 +43,15 @@ def load_user(user_id):
         return User(u['id'], u['email'], u['role'])
     return None
 
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'admin':
+            flash("Admin access required.", "error")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 # --- ROUTES ---
 
 
@@ -78,6 +94,7 @@ def get_members():
 
 
 @app.route('/create-member', methods=['POST'])
+# @admin_required
 @login_required
 def create_member():
     data = request.json
@@ -100,6 +117,7 @@ def create_member():
 
 
 @app.route('/update-member', methods=['POST'])
+# @admin_required
 @login_required
 def update_member():
     data = request.json
@@ -144,12 +162,115 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route('/admin-dashboard')
-@login_required
-def admin_only():
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
     if current_user.role != 'admin':
-        return "Access Denied: Admins Only", 403
+        return "Unauthorized", 403
     return render_template('admin.html')
+
+
+@app.route('/admin-stats')
+@admin_required
+def admin_stats():
+    # Only allow admins to see this
+    if current_user.role != 'admin':
+        return jsonify({"message": "Unauthorized"}), 403
+
+    # Get today's date in GMT/UTC
+    today_gmt = datetime.utcnow().date().isoformat()
+
+    # Query 1: Total Attendance Today
+    today_res = supabase.table("attendance") \
+        .select("id", count="exact") \
+        .eq("check_in_date", today_gmt).execute()
+
+    # Query 2: Breakdown by Service Type (All time or Last 30 days)
+    breakdown_res = supabase.rpc("get_attendance_breakdown").execute()
+
+    return jsonify({
+        "today_count": today_res.count,
+        "breakdown": breakdown_res.data
+    })
+
+
+@app.route('/api/stats-by-date')
+@admin_required
+def stats_by_date():
+    target_date = request.args.get('date')
+    if not target_date:
+        return jsonify({"total": 0, "breakdown": []}), 400
+
+    # 1. Get Total Count
+    total_res = supabase.table("attendance") \
+        .select("id", count="exact") \
+        .eq("check_in_date", target_date).execute()
+
+    # 2. Get Grouped Breakdown (Using the correct column name: attendance_type)
+    breakdown_res = supabase.table("attendance") \
+        .select("attendance_type") \
+        .eq("check_in_date", target_date).execute()
+
+    counts = {}
+    for item in breakdown_res.data:
+        # Match the key to your database column name
+        t = item['attendance_type']
+        counts[t] = counts.get(t, 0) + 1
+
+    breakdown_list = [{"type": k, "count": v} for k, v in counts.items()]
+
+    return jsonify({
+        "total": total_res.count,
+        "breakdown": breakdown_list
+    })
+
+
+@app.route('/export-attendance')
+@admin_required
+def export_attendance():
+    if current_user.role != 'admin':
+        return "Unauthorized", 403
+
+    # Get the date from the query string (e.g., /export-attendance?date=2026-03-28)
+    target_date = request.args.get(
+        'date', datetime.utcnow().date().isoformat())
+
+    # Fetch data from Supabase with a Join to get Member Names
+    # Note: Ensure your 'attendance' table has a foreign key to 'members'
+    res = supabase.table("attendance") \
+        .select("created_at, attendance_type, notes, members(full_name, phone_number, scd_group)") \
+        .eq("check_in_date", target_date).execute()
+
+    if not res.data:
+        return "No data for this date", 404
+
+    # Flatten the nested Supabase JSON for Excel
+    flattened_data = []
+    for row in res.data:
+        # We use .get() to avoid crashing if 'members' is missing for some reason
+        member_info = row.get('members') or {}
+
+        flattened_data.append({
+            "Time (GMT)": row.get('created_at'),
+            "Full Name": member_info.get('full_name', 'Unknown'),
+            "Phone": member_info.get('phone_number', 'N/A'),
+            "Group": member_info.get('scd_group', 'N/A'),
+            "Service": row.get('attendance_type'),
+            "Notes": row.get('notes')
+        })
+
+    # Create Excel in Memory
+    df = pd.DataFrame(flattened_data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Attendance')
+    output.seek(0)
+
+    return send_file(
+        output,
+        download_name=f"Attendance_{target_date}.xlsx",
+        as_attachment=True
+    )
 
 
 if __name__ == '__main__':
